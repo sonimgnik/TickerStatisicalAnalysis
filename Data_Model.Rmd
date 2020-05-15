@@ -1,0 +1,72 @@
+---
+title: "Data Model"
+output: 
+  html_document: 
+    toc: yes
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r global variables, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r Get Data from Yahoo, echo=FALSE}
+library(quantmod)
+library(zoo)
+
+#generate user input prompt
+ticker <-readline(prompt= "Enter ticker")
+
+#call ticker from Yahoo
+start.date <-readline(prompt= "Enter start date in YYYY-MM-DD format:")
+end.date <-Sys.Date()
+
+#start.date <- as.Date(end.date)
+#end.date <- as.Date(sart.date)
+
+print(paste("Retrieve data for,",ticker,"from", start.date,"to",end.date,"."))
+
+ticker.price <-NULL
+for(ticker in ticker)
+    ticker.price <-na.omit(cbind(ticker.price,getSymbols(ticker,from=start.date, to=end.date,auto.assign=F)))
+
+ticker <- ticker.price
+rm(ticker.price)
+
+names(ticker)[1] <- "Open"
+names(ticker)[2] <- "High"
+names(ticker)[3] <- "Low"
+names(ticker)[4] <- "Close"
+names(ticker)[5] <- "Volume"
+names(ticker)[6] <- "Adjusted"
+
+head(ticker,3)
+```
+
+```{r standard deviation of ticker}
+library(PerformanceAnalytics)
+ticker_sd_xts <- StdDev(ticker$Adjusted)
+#ticker_sd_xts <- round(ticker.price$SPY.Adjusted * 100, 2)
+ticker_sd_xts[1,1]
+
+```
+
+```{r normal distribution of returns, echo=FALSE}
+library(ggplot2)
+library(dplyr)
+
+ticker_log_returns <- ticker %>% Ad() %>% dailyReturn(type = "log")
+names(ticker_log_returns) <- "ticker.Log.Returns"
+
+# Plot the log-returns
+ticker_log_returns %>% ggplot(aes(x = ticker.Log.Returns)) + geom_histogram(bins = 100) + geom_density() + geom_rug(alpha = 0.5)
+probs <- c(.005, .025, .25, .5, .75, .975, .995)
+dist_log_returns <- ticker_log_returns %>% quantile(probs = probs, na.rm = TRUE)
+dist_log_returns
+mean_log_returns <- mean(ticker_log_returns, na.rm = TRUE)
+sd_log_returns <- sd(ticker_log_returns, na.rm = TRUE)
+
+mean_log_returns %>% exp()
+```
+
